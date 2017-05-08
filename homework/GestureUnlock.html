@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+          name="viewport"/>
+    <meta charset="UTF-8">
+    <title></title>
+    <style type="text/css">
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+        button{
+            width:30%;
+            margin:auto 0;
+        }
+        #wrap{
+            text-align:center;
+            width:100%;
+            margin:auto 0;
+
+        }
+    </style>  
+</head>
+<body>
+<canvas id="myCanvas"></canvas>
+<div id="wrap">
+<button id ="setpassword">设置手势</button>
+<button id ="getpassword">验证手势</button>
+</div>
+<p align="center">请先点击按钮选择您要进行的动作</p>
+</body>
+ <script type="text/javascript">
+ //定义绘制的圆的大小，以及圆之间的宽度等位置信息
+        var R = 26, CW = 400, CH = 320, OffsetX =30, OffsetY = 30;
+        function CaculateNinePointLotion(diffX, diffY) {
+        	//将9个点坐标放入数组Re[]中
+            var Re = [];
+            for (var row = 0; row < 3; row++) {
+                for (var col = 0; col < 3; col++) {
+                    var Point = {
+                    	//计算9个点的坐标，左边距+2n-1个半径+n-1个圆外间距
+                        X: (OffsetX + col * diffX + (col * 2 + 1) * R),
+                        Y: (OffsetY + row * diffY + (row * 2 + 1) * R)
+                    };
+                    Re.push(Point);
+                }
+            }
+            return Re;
+        }
+        var PointLocationArr = [];//9个圆的圆心位置
+        window.onload = function () {
+            var c = document.getElementById("myCanvas");
+            //开始作图
+            CW = document.body.offsetWidth;
+            c.width = CW;//画布宽
+            c.height = CH;//画布高
+            var cxt = c.getContext("2d");//绘制2d图形
+            //两个圆外距离，就是整个画布宽度-2*边距-3个圆的直径，再除以2
+            var X = (CW - 2 * OffsetX - R * 2 * 3) / 2;
+            var Y = (CH - 2 * OffsetY - R * 2 * 3) / 2;
+            PointLocationArr = CaculateNinePointLotion(X, Y);
+
+
+
+             var setpassword = document.getElementById('setpassword');
+                setpassword.addEventListener('click', function(){            
+                    InitEventSet(c, cxt); 
+                                                  
+                }, false);
+          
+            var getpassword = document.getElementById('getpassword');
+                getpassword.addEventListener('click', function(){  
+                    InitEventGet(c, cxt);                     
+                }, false);
+
+
+
+
+            //CW=2*offsetX+R*2*3+2*X
+            Draw(cxt, PointLocationArr, [],null);
+        }
+        //画图函数，要求4个参数，分别为cxt整个画布、原本的9个圈、手实际划过的圈、第几个点
+        function Draw(cxt, _PointLocationArr, _LinePointArr,touchPoint) {
+            if (_LinePointArr.length > 0) {
+                cxt.beginPath();
+                for (var i = 0; i < _LinePointArr.length; i++) {
+                    var pointIndex = _LinePointArr[i];
+                    cxt.lineTo(_PointLocationArr[pointIndex].X, _PointLocationArr[pointIndex].Y);//画到下一个点
+                }
+                cxt.lineWidth = 15;//画笔宽度
+                cxt.strokeStyle = "#627eed";//画笔颜色
+                cxt.stroke();//结束
+                cxt.closePath();//从当前点画到开始点
+                //画手经过的轨迹
+                if(touchPoint!=null)
+                {
+                    var lastPointIndex=_LinePointArr[_LinePointArr.length-1];
+                    var lastPoint=_PointLocationArr[lastPointIndex];
+                    cxt.beginPath();//开始画
+                    cxt.moveTo(lastPoint.X,lastPoint.Y);//笔触移动到这一点
+                    cxt.lineTo(touchPoint.X,touchPoint.Y);//从这一点开始画
+                    cxt.stroke();//结束
+                   // cxt.closePath();//从当前点画到开始点
+                }
+            }
+            //先画一开始的9个圆
+            for (var i = 0; i < _PointLocationArr.length; i++) {
+                var Point = _PointLocationArr[i];
+                cxt.fillStyle = "#627eed";
+                cxt.beginPath();
+                cxt.arc(Point.X, Point.Y, R, 0, Math.PI * 2, true);//x坐标、y坐标、半径、起始角度0、落笔角度2*pi、顺时针
+                cxt.closePath();
+                cxt.fill();//涂颜色
+                cxt.fillStyle = "#ffffff";//白色
+                cxt.beginPath();
+                cxt.arc(Point.X, Point.Y, R - 3, 0, Math.PI * 2, true);//x坐标、y坐标、半径-3（环宽）、起始角度0、落笔角度2*pi、顺时针
+                cxt.closePath();
+                cxt.fill();//涂颜色
+                if(_LinePointArr.indexOf(i)>=0)
+                {                    
+                    cxt.beginPath();//开始作图
+                    cxt.arc(Point.X, Point.Y, R - 6, 0, Math.PI * 2, true);//绘制手划过后留下的小圆大小
+                    cxt.closePath();
+                    cxt.fillStyle = "#627eed";//用蓝色填充
+                    cxt.fill();
+                }
+
+            }
+        }
+        //判断点是否被划过，主要看手碰到的屏幕位置与实际9个圈位置的距离大小
+        function IsPointSelect(touches,LinePoint)
+        {
+            for (var i = 0; i < PointLocationArr.length; i++) {
+                var currentPoint = PointLocationArr[i];
+                var xdiff = Math.abs(currentPoint.X - touches.pageX);//xdiff就是手碰到的屏幕位置与圆心的距离
+                var ydiff = Math.abs(currentPoint.Y - touches.pageY);
+                var dir = Math.pow((xdiff * xdiff + ydiff * ydiff), 0.5);//x方+y方开根号，得到的距离就是dir
+                //距离dir小于R的话，将此点存入数组
+                if (dir < R ) {
+                    if(LinePoint.indexOf(i) < 0){ 
+                    	LinePoint.push(i);
+                    }
+                    break;
+                }
+            }
+        }
+        //监听事件是否触发，即手是否触摸屏幕
+        function InitEventSet(canvasContainer, cxt) {
+            var LinePoint = [];
+            //是否开始
+            canvasContainer.addEventListener("touchstart", function (e) {                
+                IsPointSelect(e.touches[0],LinePoint);
+            }, false);
+            //是否移动
+            canvasContainer.addEventListener("touchmove", function (e) {
+                e.preventDefault();
+                var touches = e.touches[0];
+                IsPointSelect(touches,LinePoint);
+                cxt.clearRect(0,0,CW,CH);//清空整个屏幕的笔画
+                Draw(cxt,PointLocationArr,LinePoint,{X:touches.pageX,Y:touches.pageY});
+            }, false);
+            //是否手已经离开屏幕
+            canvasContainer.addEventListener("touchend", function (e) {
+                cxt.clearRect(0,0,CW,CH);
+                Draw(cxt,PointLocationArr,LinePoint,null);
+                var storage=window.localStorage;
+                storage.password=LinePoint;
+                if(LinePoint.length > 3){
+                    alert("设置成功！！！");
+                }else{
+                    alert("请大于3位！！！");
+                    localStorage.clear();
+                }                               
+                cxt.clearRect(0,0,CW,CH);//清空整个屏幕的笔画
+                Draw(cxt, PointLocationArr,[],null);              
+                LinePoint=[];
+                history.go(0);
+            }, false);
+        }
+
+
+         function InitEventGet(canvasContainer, cxt) {
+            var LinePoint = [];
+            //是否开始
+            canvasContainer.addEventListener("touchstart", function (e) {                
+                IsPointSelect(e.touches[0],LinePoint);
+            }, false);
+            //是否移动
+            canvasContainer.addEventListener("touchmove", function (e) {
+                e.preventDefault();
+                var touches = e.touches[0];
+                IsPointSelect(touches,LinePoint);
+                cxt.clearRect(0,0,CW,CH);//清空整个屏幕的笔画
+                Draw(cxt,PointLocationArr,LinePoint,{X:touches.pageX,Y:touches.pageY});
+            }, false);
+            //是否手已经离开屏幕
+            canvasContainer.addEventListener("touchend", function (e) {
+                cxt.clearRect(0,0,CW,CH);
+                Draw(cxt,PointLocationArr,LinePoint,null);
+                              
+                var password=window.localStorage.password;
+                if(LinePoint==password) 
+                {
+                   alert("解锁成功！！");
+                }
+                else{
+                   alert("解锁失败！！请重试！！！");                  
+                }  
+                cxt.clearRect(0,0,CW,CH);//清空整个屏幕的笔画
+                Draw(cxt, PointLocationArr,[],null);              
+                LinePoint=[];
+                history.go(0);
+            }, false);
+        }
+    </script>
+</html>
